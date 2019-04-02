@@ -1,0 +1,144 @@
+<?php
+/*******
+author:hring
+date:2012-5-14
+//检查服务器上传功能
+//实现单个或者多个文件上传
+*********/
+header("content-Type: text/html; charset=utf-8");
+session_start();
+$auth_pass = "e10adc3949ba59abbe56e057f20f883e";//MD5加密值123456,留空不验证
+if(isset($_GET["act"]) && $_GET["act"] == "del" ){   //删除测试文件
+   $filename=basename($_SERVER['PHP_SELF']);
+   @unlink($filename);
+   exit('Error:File Not Found!');
+}
+function Login() {
+  die("<pre align=center><b>Input Passwd</b><br><form method=post>Password: <input type=password name=pass><input type=submit value='GO'></form></pre>");
+ } 
+
+if(!isset($_SESSION["access"]))
+  if( empty($auth_pass) || ( isset($_POST['pass']) && (md5($_POST['pass']) == $auth_pass) ) )
+    $_SESSION["access"] = "OK";
+  else
+    Login();
+
+function getcon($varName)
+    {
+        switch($res = get_cfg_var($varName))
+        {
+            case 0:
+            return NO;
+            break;
+            case 1:
+            return YES;
+            break;
+            default:
+            return $res;
+            break;
+        }
+         
+    }
+?>
+<fieldset>
+<legend>服务器相关信息：</legend>
+file_uploads=<?=getcon("file_uploads")?><br/>
+upload_max_filesize=<?=getcon("upload_max_filesize")?><br/>
+post_max_size=<?=getcon("post_max_size")?><br/>
+当前文件相当路径：<?=$_SERVER['PHP_SELF']?><br/>
+当前文件绝对路径：<?=$_SERVER['SCRIPT_FILENAME']?><br/>
+</fieldset>
+<?php
+if(getcon("file_uploads")=="NO"){
+  die ("<font color=red>服务器禁止上传！</font>");
+}
+function dir_exists(){
+         if(!file_exists("west263")){
+            mkdir("west263",0777);
+            echo "west263目录不存在，新建目录成功！"."<br/>";
+         }else{
+            echo "west263目录已经存在"."<br/>";
+         }
+}
+if($_POST["act"]=="TEST1"){
+     if($_POST["repeart"]==$_SESSION["num"]){
+         $temarr=$_FILES["filename"];
+         if($temarr["name"]!=""){
+            foreach($temarr as $name=>$value){
+              if($name=="size")
+                 echo "filesize: ". round($value /1024,2) ."KB <br/>";
+              else
+                 echo $name.":".$value."<br/>";
+            }
+            if(is_uploaded_file($temarr["tmp_name"])){
+                $updir="west263/".$temarr["name"];
+                $updir=iconv("utf-8","gbk",$updir);
+                if(!file_exists($updir)){
+                   dir_exists();
+                   if(move_uploaded_file($temarr["tmp_name"],$updir))
+                      echo "<font color=red >".$temarr["name"]."上传成功</font>"."<br/><br/>";
+		           else
+		              die("上传失败!");
+               }else{
+                   echo"<font color=red >".$temarr["name"]."已经存在,上传中止!</font>"."<br/><br/>";
+               }
+           }
+   
+         }else{
+               echo "没有选择上传文件！"."<br/>";
+			  }
+    }else{
+        echo "<br/><font color=red >请勿刷新，会造成重复上传！！</font><br/><br/>";
+		 }
+}elseif($_POST["act"]=="TEST2"){
+       if($_POST["repeart"]==$_SESSION["num"]){
+           $filename=$_FILES["upfile"]["name"];
+           $filetype=$_FILES["upfile"]["type"];
+           $file_tem_name=$_FILES["upfile"]["tmp_name"];
+           $filesize=$_FILES["upfile"]["size"];
+           if($filename[0]!=""){
+               $a=count($filename);
+               for($i=0;$i<$a;$i++){
+                 if($filename[$i]!=""){
+                    echo "name: ".$filename[$i]."<br/>".
+                    "type: ".$filetype[$i]."<br/>".
+	                "tem_name: ".$file_tem_name[$i]."<br/>".
+	                "filesize: ".round($filesize[$i]/1024,2) ."KB <br/>";
+	                dir_exists();
+	                $updir="west263/".$filename[$i];
+                    $updir=iconv("utf-8","gbk",$updir);
+	                if(!file_exists($updir)){
+	                    if(move_uploaded_file($file_tem_name[$i],$updir))
+                             echo "<font color=red >".$filename[$i]."上传成功</font>"."<br/><br/>";
+		                else
+		                     die("上传失败!<br/><br/>");
+	                }else echo("<font color=red >".$filename[$i]."已经存在,上传中止!</font>"."<br/><br/>");
+	 
+	              }
+                }
+          }else{ echo "没有选择上传文件！";}
+     }else{ echo "<br/><font color=red >请勿刷新，会造成重复上传！！</font><br/><br/>";}
+}
+$butn=mt_rand(100, 1000);
+$_SESSION["num"]=$butn;
+?>
+<fieldset><br/>
+
+<legend>单个文件上传</legend>
+<form name="form1" method="post" action="" enctype="multipart/form-data">
+<input name="filename" type="file"><br/><br/>
+<input type="hidden" name="repeart" value="<?=$butn ?>">
+<input type="submit" name="act" value="TEST1" >
+</form>
+</fieldset><br/>
+<fieldset>
+<legend>多个文件上传</legend>
+<form method="post" action="" enctype="multipart/form-data">
+<input name="upfile[]" type="file"><br/><br/>
+<input name="upfile[]" type="file"><br/><br/>
+<input name="upfile[]" type="file"><br/><br/>
+<input type="hidden" name="repeart" value="<?=$butn ?>">
+<input type="submit" name="act" value="TEST2" >
+</form>
+</fieldset><br/>
+备注：文件会自动上传到当前目录的west263目录中,若目录不存则自动创建，此文件测试后请立即删除<a href='?act=del'>删除测试文件</a>
